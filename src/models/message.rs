@@ -92,7 +92,7 @@ impl MessageModel {
             MessageModel,
             r#"
             update message
-            set message = $1
+            set message = $1, updated_at = now()
             where id = $2
             returning id, user_id, message, parent_id, created_at, updated_at
             "#,
