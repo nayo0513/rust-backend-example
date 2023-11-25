@@ -8,14 +8,15 @@ ENV ROCKET_ENV=development
 WORKDIR /code
 RUN cargo init
 COPY Cargo.toml /code/Cargo.toml
-RUN cargo fetch
+RUN cargo fetch && \
+    cargo install cargo-watch
 COPY . /code
 
 FROM base AS development
 
 EXPOSE 8000
 
-CMD [ "cargo", "run", "--offline" ]
+CMD ["cargo", "watch", "-x", "run"]
 
 FROM base AS dev-envs
 
