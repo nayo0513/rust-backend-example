@@ -1,10 +1,8 @@
 use anyhow::{Error, Result};
 use chrono::NaiveDateTime;
-use sqlx::{FromRow, PgPool, query_as, query};
+use sqlx::{query, query_as, FromRow, PgPool};
 
-#[derive(
-    Debug, FromRow, serde::Deserialize, serde::Serialize,
-)]
+#[derive(Debug, FromRow, serde::Deserialize, serde::Serialize)]
 pub struct MessageModel {
     pub id: i32,
     pub user_id: i32,
@@ -23,6 +21,38 @@ impl MessageModel {
         parent_id: Option<i32>,
         pool: &PgPool,
     ) -> Result<MessageModel, Error> {
+        // Check if user_id valid.
+        if query!(
+            r#"
+            select id
+            from users
+            where id = $1
+            "#,
+            user_id
+        )
+        .fetch_one(pool)
+        .await
+        .is_err()
+        {
+            return Err(Error::msg("User not found."));
+        }
+
+        // Check if parent_id exists.
+        if query!(
+            r#"
+            select id
+            from message
+            where id = $1
+            "#,
+            parent_id
+        )
+        .fetch_one(pool)
+        .await
+        .is_err()
+        {
+            return Err(Error::msg("Parent message not found."));
+        }
+
         let row = query_as!(
             MessageModel,
             r#"
@@ -40,11 +70,23 @@ impl MessageModel {
         Ok(row)
     }
 
-    pub async fn modify(
-        id: i32,
-        message: String,
-        pool: &PgPool,
-    ) -> Result<MessageModel, Error> {
+    pub async fn modify(id: i32, message: String, pool: &PgPool) -> Result<MessageModel, Error> {
+        // Check if message exists.
+        if query!(
+            r#"
+            select id
+            from message
+            where id = $1
+            "#,
+            id
+        )
+        .fetch_one(pool)
+        .await
+        .is_err()
+        {
+            return Err(Error::msg("Message not found."));
+        }
+
         let row = query_as!(
             MessageModel,
             r#"
@@ -63,6 +105,22 @@ impl MessageModel {
     }
 
     pub async fn delete(id: i32, pool: &PgPool) -> Result<i32, Error> {
+        // Check if message exists.
+        if query!(
+            r#"
+            select id
+            from message
+            where id = $1
+            "#,
+            id
+        )
+        .fetch_one(pool)
+        .await
+        .is_err()
+        {
+            return Err(Error::msg("Message not found."));
+        }
+
         let row = query!(
             r#"
             delete from message
@@ -83,6 +141,22 @@ impl MessageModel {
         end_time: Option<NaiveDateTime>,
         pool: &PgPool,
     ) -> Result<Vec<MessageModel>, Error> {
+        // Check if user_id valid.
+        if query!(
+            r#"
+            select id
+            from users
+            where id = $1
+            "#,
+            user_id
+        )
+        .fetch_one(pool)
+        .await
+        .is_err()
+        {
+            return Err(Error::msg("User not found."));
+        }
+
         let rows = query_as!(
             MessageModel,
             r#"
