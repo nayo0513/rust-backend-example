@@ -38,17 +38,18 @@ impl MessageModel {
         }
 
         // Check if parent_id exists.
-        if query!(
-            r#"
+        if parent_id.is_some()
+            && query!(
+                r#"
             select id
             from message
             where id = $1
             "#,
-            parent_id
-        )
-        .fetch_one(pool)
-        .await
-        .is_err()
+                parent_id
+            )
+            .fetch_one(pool)
+            .await
+            .is_err()
         {
             return Err(Error::msg("Parent message not found."));
         }
