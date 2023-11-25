@@ -1,5 +1,9 @@
+use anyhow::{Error, Result};
+use chrono::NaiveDateTime;
+use sqlx::{FromRow, PgPool, query_as, query};
+
 #[derive(
-    Debug, sqlx::FromRow, serde::Deserialize, serde::Serialize,
+    Debug, FromRow, serde::Deserialize, serde::Serialize,
 )]
 pub struct MessageModel {
     pub id: i32,
@@ -7,9 +11,9 @@ pub struct MessageModel {
     pub message: String,
     pub parent_id: Option<i32>,
     #[serde(rename = "createdAt")]
-    pub created_at: Option<chrono::NaiveDateTime>,
+    pub created_at: Option<NaiveDateTime>,
     #[serde(rename = "updatedAt")]
-    pub updated_at: Option<chrono::NaiveDateTime>,
+    pub updated_at: Option<NaiveDateTime>,
 }
 
 impl MessageModel {
@@ -17,9 +21,9 @@ impl MessageModel {
         user_id: i32,
         message: String,
         parent_id: Option<i32>,
-        pool: &sqlx::PgPool,
-    ) -> Result<MessageModel, sqlx::Error> {
-        let row = sqlx::query_as!(
+        pool: &PgPool,
+    ) -> Result<MessageModel, Error> {
+        let row = query_as!(
             MessageModel,
             r#"
             insert into message (user_id, message, parent_id)
@@ -39,9 +43,9 @@ impl MessageModel {
     pub async fn modify(
         id: i32,
         message: String,
-        pool: &sqlx::PgPool,
-    ) -> Result<MessageModel, sqlx::Error> {
-        let row = sqlx::query_as!(
+        pool: &PgPool,
+    ) -> Result<MessageModel, Error> {
+        let row = query_as!(
             MessageModel,
             r#"
             update message
@@ -58,8 +62,8 @@ impl MessageModel {
         Ok(row)
     }
 
-    pub async fn delete(id: i32, pool: &sqlx::PgPool) -> Result<i32, sqlx::Error> {
-        let row = sqlx::query!(
+    pub async fn delete(id: i32, pool: &PgPool) -> Result<i32, Error> {
+        let row = query!(
             r#"
             delete from message
             where id = $1
@@ -75,11 +79,11 @@ impl MessageModel {
 
     pub async fn find_by_user_id_and_time_range(
         user_id: i32,
-        start_time: Option<chrono::NaiveDateTime>,
-        end_time: Option<chrono::NaiveDateTime>,
-        pool: &sqlx::PgPool,
-    ) -> Result<Vec<MessageModel>, sqlx::Error> {
-        let rows = sqlx::query_as!(
+        start_time: Option<NaiveDateTime>,
+        end_time: Option<NaiveDateTime>,
+        pool: &PgPool,
+    ) -> Result<Vec<MessageModel>, Error> {
+        let rows = query_as!(
             MessageModel,
             r#"
             select id, user_id, message, parent_id, created_at, updated_at
