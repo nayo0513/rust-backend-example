@@ -1,7 +1,7 @@
 use crate::models::message::MessageModel;
 use anyhow::{Error, Result};
-use async_graphql::{Object, Context};
-use chrono::NaiveDateTime;
+use async_graphql::{Context, Object};
+use chrono::{DateTime, Utc};
 use sqlx::postgres::PgPool;
 
 pub struct QueryRoot;
@@ -12,8 +12,8 @@ impl QueryRoot {
         &self,
         ctx: &Context<'_>,
         user_id: i32,
-        start_time: Option<NaiveDateTime>,
-        end_time: Option<NaiveDateTime>,
+        start_time: Option<DateTime<Utc>>,
+        end_time: Option<DateTime<Utc>>,
     ) -> Result<Vec<MessageModel>, Error> {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
         let rows =
@@ -41,11 +41,11 @@ impl MessageModel {
         self.parent_id
     }
 
-    async fn created_at(&self) -> Option<NaiveDateTime> {
+    async fn created_at(&self) -> Option<DateTime<Utc>> {
         self.created_at
     }
 
-    async fn updated_at(&self) -> Option<NaiveDateTime> {
+    async fn updated_at(&self) -> Option<DateTime<Utc>> {
         self.updated_at
     }
 }

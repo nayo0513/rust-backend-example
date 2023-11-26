@@ -1,5 +1,5 @@
 use anyhow::{Error, Result};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, DateTime, Utc};
 use sqlx::{query, query_as, FromRow, PgPool};
 
 #[derive(Debug, FromRow, serde::Deserialize, serde::Serialize)]
@@ -9,9 +9,9 @@ pub struct MessageModel {
     pub message: String,
     pub parent_id: Option<i32>,
     #[serde(rename = "createdAt")]
-    pub created_at: Option<NaiveDateTime>,
+    pub created_at: Option<DateTime<Utc>>,
     #[serde(rename = "updatedAt")]
-    pub updated_at: Option<NaiveDateTime>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl MessageModel {
@@ -138,8 +138,8 @@ impl MessageModel {
 
     pub async fn find_by_user_id_and_time_range(
         user_id: i32,
-        start_time: Option<NaiveDateTime>,
-        end_time: Option<NaiveDateTime>,
+        start_time: Option<DateTime<Utc>>,
+        end_time: Option<DateTime<Utc>>,
         pool: &PgPool,
     ) -> Result<Vec<MessageModel>, Error> {
         // Check if user_id valid.
