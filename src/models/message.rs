@@ -1,5 +1,5 @@
 use anyhow::{Error, Result};
-use chrono::{NaiveDateTime, DateTime, Utc};
+use chrono::{DateTime, Utc};
 use sqlx::{query, query_as, FromRow, PgPool};
 
 #[derive(Debug, FromRow, serde::Deserialize, serde::Serialize)]
@@ -8,10 +8,12 @@ pub struct MessageModel {
     pub user_id: i32,
     pub message: String,
     pub parent_id: Option<i32>,
+    #[serde(rename = "messageTime")]
+    pub message_time: DateTime<Utc>,
     #[serde(rename = "createdAt")]
-    pub created_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
     #[serde(rename = "updatedAt")]
-    pub updated_at: Option<DateTime<Utc>>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl MessageModel {
@@ -40,7 +42,7 @@ impl MessageModel {
         // Check if parent_id exists.
         if parent_id.is_some()
             && query!(
-                r#"
+            r#"
             select id
             from message
             where id = $1
@@ -57,13 +59,13 @@ impl MessageModel {
         let row = query_as!(
             MessageModel,
             r#"
-            insert into message (user_id, message, parent_id)
-            values ($1, $2, $3)
-            returning id, user_id, message, parent_id, created_at, updated_at
+            insert into message (user_id, message, parent_id, message_time)
+            values ($1, $2, $3, now())
+            returning id, user_id, message, parent_id, message_time, created_at, updated_at
             "#,
             user_id,
             message,
-            parent_id
+            parent_id,
         )
         .fetch_one(pool)
         .await?;
@@ -94,7 +96,7 @@ impl MessageModel {
             update message
             set message = $1, updated_at = now()
             where id = $2
-            returning id, user_id, message, parent_id, created_at, updated_at
+            returning id, user_id, message, parent_id, message_time, created_at, updated_at
             "#,
             message,
             id
@@ -157,21 +159,63 @@ impl MessageModel {
         {
             return Err(Error::msg("User not found."));
         }
-
-        let rows = query_as!(
-            MessageModel,
-            r#"
-            select id, user_id, message, parent_id, created_at, updated_at
-            from message
-            where user_id = $1
-            and created_at between $2 and $3
-            "#,
-            user_id,
-            start_time,
-            end_time
-        )
-        .fetch_all(pool)
-        .await?;
+        
+        let rows=if start_time.is_some() && end_time.is_some() {
+            query_as!(
+                MessageModel,
+                r#"
+                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                from message
+                where user_id = $1
+                and message_time between $2 and $3
+                "#,
+                user_id,
+                start_time,
+                end_time
+            )
+            .fetch_all(pool)
+            .await?
+        } else if start_time.is_some() {
+            query_as!(
+                MessageModel,
+                r#"
+                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                from message
+                where user_id = $1
+                and message_time >= $2
+                "#,
+                user_id,
+                start_time
+            )
+            .fetch_all(pool)
+            .await?
+        } else if end_time.is_some() {
+            query_as!(
+                MessageModel,
+                r#"
+                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                from message
+                where user_id = $1
+                and message_time <= $2
+                "#,
+                user_id,
+                end_time
+            )
+            .fetch_all(pool)
+            .await?
+        } else {
+            query_as!(
+                MessageModel,
+                r#"
+                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                from message
+                where user_id = $1
+                "#,
+                user_id
+            )
+            .fetch_all(pool)
+            .await?
+        };
 
         Ok(rows)
     }

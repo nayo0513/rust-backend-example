@@ -41,11 +41,15 @@ impl MessageModel {
         self.parent_id
     }
 
-    async fn created_at(&self) -> Option<DateTime<Utc>> {
+    async fn message_time(&self) -> DateTime<Utc> {
+        self.message_time
+    }
+
+    async fn created_at(&self) -> DateTime<Utc> {
         self.created_at
     }
 
-    async fn updated_at(&self) -> Option<DateTime<Utc>> {
+    async fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
 }
