@@ -238,6 +238,7 @@ impl MessageModel {
         Ok(rows)
     }
 
+    // Find messages and child messages by id.
     pub async fn find_messages_by_id(id: i32, pool: &PgPool) -> Result<Vec<MessageModelResponse>, Error> {
         // Check if message exists.
         if query!(
