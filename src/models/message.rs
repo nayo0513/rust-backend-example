@@ -1,8 +1,8 @@
 use anyhow::{Error, Result};
 use chrono::{DateTime, Utc};
-use sqlx::{query, query_as, FromRow, PgPool};
+use sqlx::{query, query_as, PgPool};
 
-#[derive(Debug, FromRow, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct MessageModel {
     pub id: i32,
     pub user_id: i32,
@@ -16,13 +16,23 @@ pub struct MessageModel {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct MessageModelResponse {
+    pub id: i32,
+    pub user_id: i32,
+    pub message: String,
+    pub parent_id: Option<i32>,
+    #[serde(rename = "messageTime")]
+    pub message_time: DateTime<Utc>,
+}
+
 impl MessageModel {
     pub async fn create(
         user_id: i32,
         message: String,
         parent_id: Option<i32>,
         pool: &PgPool,
-    ) -> Result<MessageModel, Error> {
+    ) -> Result<MessageModelResponse, Error> {
         // Check if user_id valid.
         if query!(
             r#"
@@ -57,11 +67,11 @@ impl MessageModel {
         }
 
         let row = query_as!(
-            MessageModel,
+            MessageModelResponse,
             r#"
             insert into message (user_id, message, parent_id, message_time)
             values ($1, $2, $3, now())
-            returning id, user_id, message, parent_id, message_time, created_at, updated_at
+            returning id, user_id, message, parent_id, message_time
             "#,
             user_id,
             message,
@@ -73,7 +83,11 @@ impl MessageModel {
         Ok(row)
     }
 
-    pub async fn modify(id: i32, message: String, pool: &PgPool) -> Result<MessageModel, Error> {
+    pub async fn modify(
+        id: i32,
+        message: String,
+        pool: &PgPool,
+    ) -> Result<MessageModelResponse, Error> {
         // Check if message exists.
         if query!(
             r#"
@@ -91,12 +105,12 @@ impl MessageModel {
         }
 
         let row = query_as!(
-            MessageModel,
+            MessageModelResponse,
             r#"
             update message
             set message = $1, updated_at = now()
             where id = $2
-            returning id, user_id, message, parent_id, message_time, created_at, updated_at
+            returning id, user_id, message, parent_id, message_time
             "#,
             message,
             id
@@ -143,7 +157,7 @@ impl MessageModel {
         start_time: Option<DateTime<Utc>>,
         end_time: Option<DateTime<Utc>>,
         pool: &PgPool,
-    ) -> Result<Vec<MessageModel>, Error> {
+    ) -> Result<Vec<MessageModelResponse>, Error> {
         // Check if user_id valid.
         if query!(
             r#"
@@ -163,9 +177,9 @@ impl MessageModel {
         let rows = if start_time.is_some() && end_time.is_some() {
             // If both start_time and end_time are specified.
             query_as!(
-                MessageModel,
+                MessageModelResponse,
                 r#"
-                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                select id, user_id, message, parent_id, message_time
                 from message
                 where user_id = $1
                 and message_time between $2 and $3
@@ -179,9 +193,9 @@ impl MessageModel {
         } else if start_time.is_some() {
             // If only start_time is specified.
             query_as!(
-                MessageModel,
+                MessageModelResponse,
                 r#"
-                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                select id, user_id, message, parent_id, message_time
                 from message
                 where user_id = $1
                 and message_time >= $2
@@ -194,9 +208,9 @@ impl MessageModel {
         } else if end_time.is_some() {
             // If only end_time is specified.
             query_as!(
-                MessageModel,
+                MessageModelResponse,
                 r#"
-                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                select id, user_id, message, parent_id, message_time
                 from message
                 where user_id = $1
                 and message_time <= $2
@@ -209,9 +223,9 @@ impl MessageModel {
         } else {
             // If both start_time and end_time are not specified.
             query_as!(
-                MessageModel,
+                MessageModelResponse,
                 r#"
-                select id, user_id, message, parent_id, message_time, created_at, updated_at
+                select id, user_id, message, parent_id, message_time
                 from message
                 where user_id = $1
                 "#,

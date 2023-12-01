@@ -1,4 +1,4 @@
-use crate::models::message::MessageModel;
+use crate::models::message::{MessageModel, MessageModelResponse};
 use anyhow::{Error, Result};
 use async_graphql::{Context, Object};
 use chrono::{DateTime, Utc};
@@ -14,7 +14,7 @@ impl QueryRoot {
         user_id: i32,
         start_time: Option<DateTime<Utc>>,
         end_time: Option<DateTime<Utc>>,
-    ) -> Result<Vec<MessageModel>, Error> {
+    ) -> Result<Vec<MessageModelResponse>, Error> {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
         let rows =
             MessageModel::find_by_user_id_and_time_range(user_id, start_time, end_time, pool)
@@ -24,7 +24,7 @@ impl QueryRoot {
 }
 
 #[Object]
-impl MessageModel {
+impl MessageModelResponse {
     async fn id(&self) -> i32 {
         self.id
     }
@@ -43,13 +43,5 @@ impl MessageModel {
 
     async fn message_time(&self) -> DateTime<Utc> {
         self.message_time
-    }
-
-    async fn created_at(&self) -> DateTime<Utc> {
-        self.created_at
-    }
-
-    async fn updated_at(&self) -> DateTime<Utc> {
-        self.updated_at
     }
 }

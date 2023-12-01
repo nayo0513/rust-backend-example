@@ -1,4 +1,4 @@
-use crate::models::message::MessageModel;
+use crate::models::message::{MessageModel, MessageModelResponse};
 use anyhow::{Error, Result};
 use async_graphql::Object;
 use sqlx::postgres::PgPool;
@@ -13,7 +13,7 @@ impl MutationRoot {
         user_id: i32,
         message: String,
         parent_id: Option<i32>,
-    ) -> Result<MessageModel, Error> {
+    ) -> Result<MessageModelResponse, Error> {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
         let row = MessageModel::create(user_id, message, parent_id, pool).await?;
         Ok(row)
@@ -24,7 +24,7 @@ impl MutationRoot {
         ctx: &async_graphql::Context<'_>,
         id: i32,
         message: String,
-    ) -> Result<MessageModel, Error> {
+    ) -> Result<MessageModelResponse, Error> {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
         let row = MessageModel::modify(id, message, pool).await?;
         Ok(row)
