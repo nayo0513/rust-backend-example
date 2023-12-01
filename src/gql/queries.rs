@@ -21,6 +21,16 @@ impl QueryRoot {
                 .await?;
         Ok(rows)
     }
+
+    async fn find_messages_by_id(
+        &self,
+        ctx: &Context<'_>,
+        id: i32,
+    ) -> Result<Vec<MessageModelResponse>, Error> {
+        let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
+        let rows = MessageModel::find_messages_by_id(id, pool).await?;
+        Ok(rows)
+    }
 }
 
 #[Object]

@@ -237,6 +237,44 @@ impl MessageModel {
 
         Ok(rows)
     }
+
+    pub async fn find_messages_by_id(id: i32, pool: &PgPool) -> Result<Vec<MessageModelResponse>, Error> {
+        // Check if message exists.
+        if query!(
+            r#"
+            select id
+            from message
+            where id = $1
+            "#,
+            id
+        )
+        .fetch_one(pool)
+        .await
+        .is_err()
+        {
+            return Err(Error::msg("Message not found."));
+        }
+
+        let rows = query_as!(
+            MessageModelResponse,
+            r#"
+            with recursive cte as (
+                select id, user_id, message, parent_id, message_time
+                from message
+                where id = $1
+                union all
+                select m.id, m.user_id, m.message, m.parent_id, m.message_time
+                from message m
+                inner join cte on cte.id = m.parent_id
+            )
+            select id as "id!", user_id as "user_id!", message as "message!", parent_id, message_time as "message_time!"
+            from cte
+            "#,
+            id
+        ).fetch_all(pool).await?;
+
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
@@ -415,6 +453,54 @@ mod tests {
         )
         .await?;
         assert_eq!(rows.len(), 1);
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn find_messages_by_id(pool: PgPool) -> Result<()> {
+        let user_id = 1;
+        let message = "test message".to_string();
+
+        // Create user.
+        query!(
+            r#"
+            insert into users (id, name, password, email)
+            values ($1, $2, $3, $4)
+            "#,
+            user_id,
+            "test",
+            "test",
+            "test@example.com",
+        )
+        .execute(&pool)
+        .await?;
+        // Create message1.
+        query!(
+            r#"
+            insert into message (user_id, message, message_time)
+            values ($1, $2, now())
+            "#,
+            user_id,
+            message.clone(),
+        )
+        .execute(&pool)
+        .await?;
+        // Create message2.
+        query!(
+            r#"
+            insert into message (user_id, message, parent_id, message_time)
+            values ($1, $2, $3, now())
+            "#,
+            user_id,
+            message.clone(),
+            1,
+        )
+        .execute(&pool)
+        .await?;
+
+        // Find thread.
+        let rows = MessageModel::find_messages_by_id(user_id, &pool).await?;
+        assert_eq!(rows.len(), 2);
         Ok(())
     }
 }
