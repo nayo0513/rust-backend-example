@@ -1,21 +1,21 @@
 ALTER USER postgres SET timezone='Asia/Tokyo';
 
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+create table users (
+    id serial primary key,
+    name varchar(255) not null,
+    email varchar(255) not null unique,
+    password varchar(255) not null,
+    created_at timestamptz not null default current_timestamp,
+    updated_at timestamptz not null default current_timestamp
 );
 
-CREATE TABLE message (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    message TEXT NOT NULL,
-    parent_id INTEGER,
-    message_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
+create table messages (
+    id serial primary key,
+    user_id integer not null,
+    message text not null,
+    parent_id integer,
+    message_time timestamptz not null default current_timestamp,
+    created_at timestamptz not null default current_timestamp,
+    updated_at timestamptz not null default current_timestamp,
+    foreign key (user_id) references users (id)
 );
