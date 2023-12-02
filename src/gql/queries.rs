@@ -1,4 +1,7 @@
-use crate::models::message::{MessageModel, MessageModelResponse};
+use crate::models::{
+    message::{MessageModel, MessageModelResponse},
+    users::UsersModelResponse,
+};
 use anyhow::{Error, Result};
 use async_graphql::{Context, Object};
 use chrono::{DateTime, Utc};
@@ -53,5 +56,20 @@ impl MessageModelResponse {
 
     async fn message_time(&self) -> DateTime<Utc> {
         self.message_time
+    }
+}
+
+#[Object]
+impl UsersModelResponse {
+    async fn id(&self) -> i32 {
+        self.id
+    }
+
+    async fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    async fn email(&self) -> String {
+        self.email.clone()
     }
 }

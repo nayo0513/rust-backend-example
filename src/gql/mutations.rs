@@ -1,4 +1,4 @@
-use crate::models::message::{MessageModel, MessageModelResponse};
+use crate::models::{message::{MessageModel, MessageModelResponse}, users::{UsersModelResponse, UsersModel}};
 use anyhow::{Error, Result};
 use async_graphql::Object;
 use sqlx::postgres::PgPool;
@@ -37,6 +37,18 @@ impl MutationRoot {
     ) -> Result<i32, Error> {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
         let row = MessageModel::delete(id, pool).await?;
+        Ok(row)
+    }
+
+    async fn create_user(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        name: String,
+        email: String,
+        password: String,
+    ) -> Result<UsersModelResponse, Error> {
+        let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
+        let row = UsersModel::create(name, email, password, pool).await?;
         Ok(row)
     }
 }
