@@ -9,7 +9,7 @@ create table users (
     updated_at timestamptz not null default current_timestamp
 );
 
-create table messages (
+create table message (
     id serial primary key,
     user_id integer not null,
     message text not null,

@@ -1,2 +1,2 @@
-DROP TABLE users;
-DROP TABLE message;
+drop table users;
+drop table message;
