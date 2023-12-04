@@ -239,7 +239,10 @@ impl MessageModel {
     }
 
     // Find messages and child messages by id.
-    pub async fn find_messages_by_id(id: i32, pool: &PgPool) -> Result<Vec<MessageModelResponse>, Error> {
+    pub async fn find_messages_by_id(
+        id: i32,
+        pool: &PgPool,
+    ) -> Result<Vec<MessageModelResponse>, Error> {
         // Check if message exists.
         if query!(
             r#"
@@ -280,9 +283,7 @@ impl MessageModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::models::message::MessageModel;
-    use anyhow::Result;
-    use sqlx::{query, query_as, PgPool};
+    use super::*;
 
     #[sqlx::test]
     async fn create(pool: PgPool) -> Result<()> {

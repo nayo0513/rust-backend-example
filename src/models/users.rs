@@ -62,3 +62,47 @@ impl UsersModel {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use argon2::PasswordVerifier;
+    use sqlx::{query_as, PgPool};
+
+    #[sqlx::test]
+    async fn create(pool: PgPool) -> Result<()> {
+        let name = "test";
+        let email = "example.example.com";
+        let password = "password";
+
+        UsersModel::create(
+            name.to_string(),
+            email.to_string(),
+            password.to_string(),
+            &pool,
+        )
+        .await?;
+        let row = query_as!(
+            UsersModel,
+            r#"
+            SELECT id, name, email, password, created_at, updated_at
+            FROM users
+            WHERE email = $1
+            "#,
+            email
+        )
+        .fetch_all(&pool)
+        .await?;
+        assert_eq!(row.len(), 1);
+
+        // Check password
+        let argon2 = Argon2::default();
+        let parsed_hash = PasswordHash::new(&row[0].password).expect("Unable to parse hash.");
+        assert!(argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok());
+
+        Ok(())
+    }
+}
