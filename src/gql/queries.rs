@@ -1,6 +1,6 @@
 use crate::models::{
     message::{MessageModel, MessageModelResponse},
-    users::UsersModelResponse,
+    users::{UsersModel, UsersModelResponse},
 };
 use anyhow::{Error, Result};
 use async_graphql::{Context, Object};
@@ -33,6 +33,17 @@ impl QueryRoot {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
         let rows = MessageModel::find_messages_by_id(id, pool).await?;
         Ok(rows)
+    }
+
+    async fn login(
+        &self,
+        ctx: &Context<'_>,
+        email: String,
+        password: String,
+    ) -> Result<String, Error> {
+        let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
+        let token = UsersModel::login(email, password, pool).await?;
+        Ok(token)
     }
 }
 
