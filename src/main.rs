@@ -1,6 +1,7 @@
 use actix_web::{guard, web, App, HttpResponse, HttpServer, Result};
 use async_graphql::{http::GraphiQLSource, EmptySubscription, Schema};
 use async_graphql_actix_web::GraphQL;
+use dotenvy::dotenv;
 use gql::{mutations::MutationRoot, queries::QueryRoot};
 use sqlx::PgPool;
 use std::env;
@@ -11,6 +12,7 @@ mod models;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
+    dotenv().expect(".env file not found");
 
     let pool = PgPool::connect(&env::var("DATABASE_URL").unwrap_or("".to_string()))
         .await

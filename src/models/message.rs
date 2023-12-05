@@ -1,6 +1,9 @@
 use anyhow::{Error, Result};
 use chrono::{DateTime, Utc};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use sqlx::{query, query_as, PgPool};
+
+use super::users::Claims;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct MessageModel {
@@ -87,7 +90,9 @@ impl MessageModel {
         id: i32,
         message: String,
         pool: &PgPool,
+        token: String,
     ) -> Result<MessageModelResponse, Error> {
+        verify_token(token)?;
         // Check if message exists.
         if query!(
             r#"
@@ -121,7 +126,8 @@ impl MessageModel {
         Ok(row)
     }
 
-    pub async fn delete(id: i32, pool: &PgPool) -> Result<i32, Error> {
+    pub async fn delete(id: i32, pool: &PgPool, token: String) -> Result<i32, Error> {
+        verify_token(token)?;
         // Check if message exists.
         if query!(
             r#"
@@ -281,8 +287,20 @@ impl MessageModel {
     }
 }
 
+fn verify_token(token: String) -> Result<i32, Error> {
+    let encoding_key = std::env::var("ENCODING_KEY").expect("Failed to get encoding key.");
+    let token_data = decode::<Claims>(
+        &token,
+        &DecodingKey::from_secret(encoding_key.as_bytes()),
+        &Validation::default(),
+    )?;
+    Ok(token_data.claims.sub.parse::<i32>()?)
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::models::users::UsersModel;
+
     use super::*;
 
     #[sqlx::test]
@@ -317,21 +335,19 @@ mod tests {
     #[sqlx::test]
     async fn modify(pool: PgPool) -> Result<()> {
         let user_id = 1;
-        let message = "test message".to_string();
+        let message = "test message";
+        let email = "test@example.com";
+        let password = "password";
 
         // Create user.
-        query!(
-            r#"
-            insert into users (id, name, password, email)
-            values ($1, $2, $3, $4)
-            "#,
-            user_id,
-            "test",
-            "test",
-            "test@example.com"
+        UsersModel::create(
+            "test".to_string(),
+            email.to_string(),
+            password.to_string(),
+            &pool,
         )
-        .execute(&pool)
         .await?;
+
         // Create message.
         query!(
             r#"
@@ -339,14 +355,28 @@ mod tests {
             values ($1, $2, now())
             "#,
             user_id,
-            message.clone(),
+            message.to_string(),
         )
         .execute(&pool)
         .await?;
 
-        let modified_message = "modified message".to_string();
+        let modified_message = "modified message";
+        // Login.
+        let token = UsersModel::login(email.to_string(), password.to_string(), &pool).await?;
+        let dummy_token = "dummy token";
+
+        // Modify message with invalid token.
+        let row = MessageModel::modify(
+            1,
+            modified_message.to_string(),
+            &pool,
+            dummy_token.to_string(),
+        )
+        .await;
+        assert!(row.is_err());
+
         // Modify message.
-        let row = MessageModel::modify(1, modified_message.clone(), &pool).await?;
+        let row = MessageModel::modify(1, modified_message.to_string(), &pool, token).await?;
 
         assert_eq!(row.message, modified_message);
         Ok(())
@@ -355,21 +385,19 @@ mod tests {
     #[sqlx::test]
     async fn delete(pool: PgPool) -> Result<()> {
         let user_id = 1;
-        let message = "test message".to_string();
+        let message = "test message";
+        let email = "test@example.com";
+        let password = "password";
 
         // Create user.
-        query!(
-            r#"
-            insert into users (id, name, password, email)
-            values ($1, $2, $3, $4)
-            "#,
-            user_id,
-            "test",
-            "test",
-            "test@example.com"
+        UsersModel::create(
+            "test".to_string(),
+            email.to_string(),
+            password.to_string(),
+            &pool,
         )
-        .execute(&pool)
         .await?;
+
         // Create message.
         query!(
             r#"
@@ -377,13 +405,21 @@ mod tests {
             values ($1, $2, now())
             "#,
             user_id,
-            message.clone(),
+            message.to_string(),
         )
         .execute(&pool)
         .await?;
 
+        // Login.
+        let token = UsersModel::login(email.to_string(), password.to_string(), &pool).await?;
+        let dummy_token = "dummy token";
+
+        // Delete message with invalid token.
+        let row = MessageModel::delete(user_id, &pool, dummy_token.to_string()).await;
+        assert!(row.is_err());
+
         // Delete message.
-        MessageModel::delete(user_id, &pool).await?;
+        MessageModel::delete(user_id, &pool, token).await?;
 
         // Check if message deleted.
         let row = query_as!(

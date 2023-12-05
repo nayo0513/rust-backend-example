@@ -27,8 +27,8 @@ pub struct UsersModelResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    sub: String,
-    exp: usize,
+    pub sub: String,
+    pub exp: usize,
 }
 
 impl UsersModel {
@@ -106,10 +106,11 @@ fn encode_token(user_id: i32) -> Result<String, Error> {
         sub: user_id.to_string(),
         exp: (Utc::now() + chrono::Duration::hours(24)).timestamp() as usize,
     };
+    let encoding_key = std::env::var("ENCODING_KEY").expect("Failed to get encoding key.");
     let token = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &jsonwebtoken::EncodingKey::from_secret("secret".as_ref()),
+        &jsonwebtoken::EncodingKey::from_secret(encoding_key.as_bytes()),
     )?;
     Ok(token)
 }
