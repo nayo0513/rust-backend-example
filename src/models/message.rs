@@ -35,23 +35,9 @@ impl MessageModel {
         message: String,
         parent_id: Option<i32>,
         pool: &PgPool,
+        token: String,
     ) -> Result<MessageModelResponse, Error> {
-        // Check if user_id valid.
-        if query!(
-            r#"
-            select id
-            from users
-            where id = $1
-            "#,
-            user_id
-        )
-        .fetch_one(pool)
-        .await
-        .is_err()
-        {
-            return Err(Error::msg("User not found."));
-        }
-
+        verify_token(token)?;
         // Check if parent_id exists.
         if parent_id.is_some()
             && query!(
@@ -299,31 +285,40 @@ fn verify_token(token: String) -> Result<i32, Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::models::users::UsersModel;
-
     use super::*;
+    use crate::models::users::UsersModel;
 
     #[sqlx::test]
     async fn create(pool: PgPool) -> Result<()> {
         let user_id = 1;
-        let message = "test message".to_string();
+        let message = "test message";
         let parent_id = None;
-
+        let email = "test@example.com";
+        let password = "password";
         // Create user.
-        query!(
-            r#"
-            insert into users (id, name, password, email)
-            values ($1, $2, $3, $4)
-            "#,
-            user_id,
-            "test",
-            "test",
-            "test@example.com"
+        UsersModel::create(
+            "test".to_string(),
+            email.to_string(),
+            password.to_string(),
+            &pool,
         )
-        .execute(&pool)
         .await?;
+        // Login.
+        let token = UsersModel::login(email.to_string(), password.to_string(), &pool).await?;
+        let dummy_token = "dummy token";
+        // Create message with invalid token.
+        let row = MessageModel::create(
+            user_id,
+            message.to_string(),
+            parent_id,
+            &pool,
+            dummy_token.to_string(),
+        )
+        .await;
+        assert!(row.is_err());
         // Create message.
-        let row = MessageModel::create(user_id, message.clone(), parent_id, &pool).await?;
+        let row =
+            MessageModel::create(user_id, message.to_string(), parent_id, &pool, token).await?;
 
         assert_eq!(row.user_id, user_id);
         assert_eq!(row.message, message);
@@ -338,7 +333,6 @@ mod tests {
         let message = "test message";
         let email = "test@example.com";
         let password = "password";
-
         // Create user.
         UsersModel::create(
             "test".to_string(),
@@ -347,7 +341,6 @@ mod tests {
             &pool,
         )
         .await?;
-
         // Create message.
         query!(
             r#"
@@ -359,12 +352,10 @@ mod tests {
         )
         .execute(&pool)
         .await?;
-
         let modified_message = "modified message";
         // Login.
         let token = UsersModel::login(email.to_string(), password.to_string(), &pool).await?;
         let dummy_token = "dummy token";
-
         // Modify message with invalid token.
         let row = MessageModel::modify(
             1,
@@ -374,10 +365,8 @@ mod tests {
         )
         .await;
         assert!(row.is_err());
-
         // Modify message.
         let row = MessageModel::modify(1, modified_message.to_string(), &pool, token).await?;
-
         assert_eq!(row.message, modified_message);
         Ok(())
     }
@@ -388,7 +377,6 @@ mod tests {
         let message = "test message";
         let email = "test@example.com";
         let password = "password";
-
         // Create user.
         UsersModel::create(
             "test".to_string(),
@@ -397,7 +385,6 @@ mod tests {
             &pool,
         )
         .await?;
-
         // Create message.
         query!(
             r#"
@@ -409,18 +396,14 @@ mod tests {
         )
         .execute(&pool)
         .await?;
-
         // Login.
         let token = UsersModel::login(email.to_string(), password.to_string(), &pool).await?;
         let dummy_token = "dummy token";
-
         // Delete message with invalid token.
         let row = MessageModel::delete(user_id, &pool, dummy_token.to_string()).await;
         assert!(row.is_err());
-
         // Delete message.
         MessageModel::delete(user_id, &pool, token).await?;
-
         // Check if message deleted.
         let row = query_as!(
             MessageModel,
@@ -432,7 +415,6 @@ mod tests {
         .fetch_all(&pool)
         .await?;
         assert_eq!(row.len(), 0);
-
         Ok(())
     }
 
@@ -440,7 +422,6 @@ mod tests {
     async fn find_by_user_id_and_time_range(pool: PgPool) -> Result<()> {
         let user_id = 1;
         let message = "test message".to_string();
-
         // Create user.
         query!(
             r#"
@@ -467,7 +448,6 @@ mod tests {
         )
         .execute(&pool)
         .await?;
-
         // Find message.
         // Find by user_id.
         let rows = MessageModel::find_by_user_id_and_time_range(user_id, None, None, &pool).await?;
@@ -498,7 +478,6 @@ mod tests {
     async fn find_messages_by_id(pool: PgPool) -> Result<()> {
         let user_id = 1;
         let message = "test message".to_string();
-
         // Create user.
         query!(
             r#"

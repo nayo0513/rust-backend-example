@@ -16,9 +16,10 @@ impl MutationRoot {
         user_id: i32,
         message: String,
         parent_id: Option<i32>,
+        token: String,
     ) -> Result<MessageModelResponse, Error> {
         let pool = ctx.data::<PgPool>().expect("Failed to get pool.");
-        let row = MessageModel::create(user_id, message, parent_id, pool).await?;
+        let row = MessageModel::create(user_id, message, parent_id, pool, token).await?;
         Ok(row)
     }
 
